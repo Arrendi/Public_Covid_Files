@@ -1,1 +1,82 @@
+library(readxl)
+library(ggplot2)
+library(ggthemes)
+library(scales)
+library(zoo)
+library(lubridate)
+theme_set(theme_minimal())
+
+Lab_Rep <- read_excel("Lab_Results.xlsx", range = "A1:AS5275",
+                      col_names = TRUE, na = "", col_types = NULL)
+
+Cov.day <-  Lab_Rep %>%
+  group_by(proxy_swab_date) %>%
+  tally() %>%
+  filter(proxy_swab_date > "2020-08-31") %>%
+  rename(Date = proxy_swab_date, Num. = n) %>%
+  mutate(Cumulative = cumsum(Num.))
+
+# Rolling Average of Positives
+Cov.Roll <- Cov.day %>%
+  mutate(Move.Avg3 = zoo::rollmean(Num.,k=3,fill=NA),
+         Move.Avg7 = zoo::rollmean(Num.,k=7,fill=NA)) %>%
+  ungroup()
+
+# Plot Positive Cases
+PC <- ggplot(Cov.day, aes(x=Date, y=Num.)) +
+       geom_col(color = "dodgerblue3", size = 1) +
+  stat_smooth( color = "#FC4E07", fill = "#FC4E07",
+         method = "loess") +
+  geom_text(aes(label = Num., vjust = -0.3), size = 4) +
+  labs(title = "Graph of New Covid-19 Cases 01.09.20 to 22.11.20") +
+  xlab("Date") + ylab("Covid Incidence Per Day") +
+  theme_gray() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.margin = margin(16.5,7.5,16.5,7.5,"pt"))+
+  scale_x_datetime(breaks = date_breaks("7 days"),
+                   labels = date_format("%d/%m"))
+PC  
+# Plot Cumulative Cases
+PC1 <- ggplot(Cov.day, aes(Date, Cumulative)) +
+  geom_col(color = "dodgerblue3", size = 1) +
+  geom_text(aes(label = Cumulative, vjust = -0.5), size = 2.5) +
+  stat_smooth( color = "#FC4E07", fill = "#FC4E07",
+               method = "loess", formula = y ~ x) +
+  labs(title = "Cumulative Covid-19 Cases 01.09.20 to 08.11.20") +
+  xlab("Date") + ylab("Positive Cases Detected") +
+  theme_gray() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.margin = margin(16.5,7.5,16.5,7.5,"pt"))+
+  scale_x_datetime(breaks = date_breaks("7 days"),
+                   labels = date_format("%d/%m")) 
+PC1
+#Plot Moving Averages
+# 3 Day Average
+PC2 <- ggplot(Cov.Roll, aes(x=Date, y=Move.Avg3)) +
+  geom_col(color = "dodgerblue3", size = 1) +
+  stat_smooth( color = "#FC4E07", fill = "#FC4E07",
+               method = "loess") +
+  geom_text(aes(label = round(Move.Avg3), vjust = -0.5), size = 3) +
+  labs(title = "3 Day Rolling Average of Covid-19 Cases 01.09.20 to 22.11.20") +
+  xlab("Date") + ylab("Positive Cases Detected") +
+  theme_gray() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.margin = margin(16.5,7.5,16.5,7.5,"pt"))+
+  scale_x_datetime(breaks = date_breaks("3 days"),
+                   labels = date_format("%d/%m"))
+PC2
+# 7 Day Average
+PC3 <- ggplot(Cov.Roll, aes(x=Date, y=Move.Avg7)) +
+  geom_col(color = "dodgerblue3", size = 1) +
+  stat_smooth( color = "#FC4E07", fill = "#FC4E07",
+               method = "loess") +
+  geom_text(aes(label = round(Move.Avg7), vjust = -0.5), size = 3) +
+  labs(title = "7 Day Rolling Average of Covid-19 Cases 01.09.20 to 22.11.20") +
+  xlab("Date") + ylab("Positive Cases Detected") +
+  theme_gray() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.margin = margin(16.5,7.5,16.5,7.5,"pt"))+
+  scale_x_datetime(breaks = date_breaks("7 days"),
+                   labels = date_format("%d/%m"))
+PC3
 
