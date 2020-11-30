@@ -1,0 +1,76 @@
+Modelling this epidemic for a duration of 100 days:
+
+# LOAD THE PACKAGES:
+library(deSolve)
+library(reshape2)
+library(ggplot2)
+
+# MODEL INPUTS:
+
+initial_state_values <- c(S = 414317,  
+                          E = 1063,
+                          I = 2181,          
+                          R = 2608)          
+
+# Vector storing the parameters describing the transition rates in units 
+#of days^-1
+parameters <- c(beta = 0.53,
+                alpha= 0.17,
+                mu   = 0.019,
+                gamma= 0.0625)   
+
+# TIMESTEPS:
+
+# Vector storing the sequence of timesteps to solve the model at
+times <- seq(from = 0, to = 100, by = .25)   
+
+# SEIR MODEL FUNCTION: 
+
+seir_model <- function(times, state, parameters) {  
+  
+  with(as.list(c(state, parameters)), {    
+    
+    # Calculating the total population size N (the sum of the number of people in each compartment)
+    N <- S+E+I+R
+    
+    # Defining lambda as a function of beta and I:
+    lambda <- beta * I/N
+    
+    # The differential equations
+    dS <- -lambda * S               
+    dE <- lambda * S - alpha * E
+    dI <- alpha * E - (mu + gamma) * I    
+    
+    dR <- gamma * I                 
+    
+    return(list(c(dS, dE,dI, dR))) 
+  })
+  
+}
+
+
+# Solving the differential equations using the ode integration algorithm
+output <- as.data.frame(ode(y = initial_state_values, 
+                            times = times, 
+                            func = seir_model,
+                            parms = parameters))
+
+# PLOTTING THE OUTPUT
+output_long <- melt(as.data.frame(output), id = "time")   
+
+
+output_long$proportion <- output_long$value/sum(initial_state_values)
+
+peak_prevalence <- output_long[(output_long$variable=='I' 
+                              & output_long$value==max(output$I)) & 
+(output_long$proportion >= 0.00 & output_long$proportion <= 1.00),]
+
+peak_prevalence
+
+ggplot(data = output_long,                                              
+       aes(x = time, y = proportion, colour = variable, group = variable)) +  
+  geom_line() +  
+  xlab("Time (days)")+                                                   
+  ylab("Proportion of the Population") +                                 
+  labs(title = "National Covid-19 Evolution Model", colour = "Compartment") +
+  theme(plot.title = element_text(hjust = 0.5))
